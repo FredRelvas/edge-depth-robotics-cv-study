@@ -1,0 +1,7 @@
+pycache
+.env
+DS_STORE
+dados/*
+!dados/.gitkeep
+.venv
+venv

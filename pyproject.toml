@@ -1,0 +1,54 @@
+[project]
+name = "trabalho-final"
+version = "0.1.0"
+description = "Repositório de treinamento de modelos de visão computacional"
+requires-python = ">=3.10"
+dependencies = [
+    # Deep learning
+    "torch>=2.2.0",
+    "torchvision>=0.17.0",
+    "torchaudio>=2.2.0",
+
+    # Visão computacional
+    "opencv-python>=4.9.0",
+    "Pillow>=10.2.0",
+    "albumentations>=1.4.0",
+
+    # Dados e computação numérica
+    "numpy>=1.26.0",
+    "scikit-learn>=1.4.0",
+    "pandas>=2.2.0",
+
+    # Visualização
+    "matplotlib>=3.8.0",
+    "seaborn>=0.13.0",
+
+    # Acompanhamento de experimentos
+    "tensorboard>=2.16.0",
+
+    # Utilitários
+    "tqdm>=4.66.0",
+    "PyYAML>=6.0.1",
+]
+
+[tool.uv]
+# Para usar GPU com CUDA, substitua o índice abaixo pelo da sua versão:
+# CUDA 12.1: https://download.pytorch.org/whl/cu121
+# CUDA 12.4: https://download.pytorch.org/whl/cu124
+# CPU / Apple MPS: usa o PyPI padrão (sem índice extra necessário)
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", marker = "platform_machine != 'arm64' and sys_platform == 'linux'" },
+]
+torchvision = [
+    { index = "pytorch-cpu", marker = "platform_machine != 'arm64' and sys_platform == 'linux'" },
+]
+torchaudio = [
+    { index = "pytorch-cpu", marker = "platform_machine != 'arm64' and sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

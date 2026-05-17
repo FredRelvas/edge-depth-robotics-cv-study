@@ -31,24 +31,30 @@ dependencies = [
     "PyYAML>=6.0.1",
 ]
 
-[tool.uv]
-# Para usar GPU com CUDA, substitua o índice abaixo pelo da sua versão:
-# CUDA 12.1: https://download.pytorch.org/whl/cu121
-# CUDA 12.4: https://download.pytorch.org/whl/cu124
-# CPU / Apple MPS: usa o PyPI padrão (sem índice extra necessário)
+# ---------------------------------------------------------------------------
+# PyTorch builds com CUDA (Linux x86_64).
+#
+# Default: CUDA 12.6 (compatível com RTX 4090 + driver moderno).
+# Se sua workstation tem driver com CUDA < 12.6, troque "cu126" por:
+#   - "cu124" para CUDA 12.4
+#   - "cu121" para CUDA 12.1
+# nos 4 lugares abaixo (URL do índice + 3 sources).
+#
+# Em macOS o uv ignora estas sources e cai no PyPI padrão (com suporte MPS).
+# ---------------------------------------------------------------------------
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
 
 [tool.uv.sources]
 torch = [
-    { index = "pytorch-cpu", marker = "platform_machine != 'arm64' and sys_platform == 'linux'" },
+    { index = "pytorch-cu126", marker = "sys_platform == 'linux'" },
 ]
 torchvision = [
-    { index = "pytorch-cpu", marker = "platform_machine != 'arm64' and sys_platform == 'linux'" },
+    { index = "pytorch-cu126", marker = "sys_platform == 'linux'" },
 ]
 torchaudio = [
-    { index = "pytorch-cpu", marker = "platform_machine != 'arm64' and sys_platform == 'linux'" },
+    { index = "pytorch-cu126", marker = "sys_platform == 'linux'" },
 ]
-
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true

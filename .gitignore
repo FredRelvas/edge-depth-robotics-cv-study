@@ -5,3 +5,26 @@ dados/*
 !dados/.gitkeep
 .venv
 venv
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Ambiente virtual do uv
+.venv/
+
+# Dataset ICL (~3GB, baixado via baixar_dados.py)
+dados/icl_ground_robot/
+!dados/.gitkeep
+
+# Modelos treinados (pesados)
+modelos-treinados/*.pth
+modelos-treinados/*.pt
+modelos-treinados/*.onnx
+modelos-treinados/*.engine
+!modelos-treinados/.gitkeep
+
+# Tensorboard / logs
+runs/
+logs/
+*.log

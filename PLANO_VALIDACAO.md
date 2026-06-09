@@ -110,3 +110,21 @@ do robô (bom ponto de partida em paralelo à preparação do hardware).
 | **Escala do Monodepth2 / Depth-Anything** | Profundidade sem escala métrica | Alinhamento por mediana (Mono) / afim (Depth-Anything) |
 | **Domain gap** | Modelos treinados no ICL Ground Robot rodando em ambiente novo → métricas piores | Esperado — é justamente o que o experimento mede, não é bug |
 | **Unidades** | OAK-D em mm, IA/LiDAR em metros | Unificar tudo para metros antes de montar a tabela |
+| **Viés do LiDAR mascarado pelo alinhamento** | Usar o LiDAR como régua *e* gabarito faz um erro sistemático dele ser absorvido pelo alinhamento dos modelos relativos (some no Monodepth2/Depth-Anything, mas o ZoeDepth o expõe) → comparação assimétrica | Validar o LiDAR contra distância conhecida; reportar também a escala ancorada pela **altura da câmera** (independente do LiDAR) — ver abaixo |
+
+## Duas fontes de escala (avaliação honesta)
+
+Modelos relativos precisam de uma referência para virar metros. O pipeline da Frente 4
+suporta duas, e vale reportar ambas:
+
+- **Via LiDAR** (`--fonte-escala lidar`): ajusta a escala/forma contra o próprio LiDAR.
+  Mede bem a **estrutura**, mas dá "ajuda" aos modelos relativos e **esconde viés
+  sistemático** do LiDAR.
+- **Via altura da câmera** (`--fonte-escala altura --altura-camera 0.395`): recupera a
+  escala pelo **plano do chão** (RANSAC) + a altura medida da câmera ao chão (**39,5 cm**
+  no nosso TB4), sem usar o LiDAR. O LiDAR vira **só gabarito** → erros dele aparecem
+  honestamente. Aplica-se a ZoeDepth e Monodepth2; **não** ao Depth-Anything (2 graus de
+  liberdade), que permanece no LiDAR ou exigiria a variante *Depth-Anything Metric*.
+
+Demonstração (sintética, LiDAR com viés α=1,08): escala via LiDAR mascara o erro no
+Monodepth2 (Abs Rel ≈ 0,001); escala via altura o revela (≈ 0,075), igual ao ZoeDepth.

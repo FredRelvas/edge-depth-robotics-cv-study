@@ -28,3 +28,11 @@ modelos-treinados/*.engine
 runs/
 logs/
 *.log
+
+# Resultados de validação (gerados pelo validacao/avaliar.py)
+resultados/*
+!resultados/.gitkeep
+
+# Rosbags (reais ou sintéticos)
+*.mcap
+*.db3

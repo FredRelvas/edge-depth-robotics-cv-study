@@ -1,0 +1,21 @@
+# Calibração de exemplo — usada pelo gerador de bag sintético e pelo avaliador.
+# Numa validação real, este arquivo vem da Frente 3 (calibração extrínseca
+# LiDAR↔câmera); o K pode ser sobreposto pelo camera_info gravado no bag.
+
+camera:
+  largura: 320
+  altura: 240
+  # Intrínseca K (3x3, row-major): fx=fy=250, centro em (160, 120).
+  k: [250.0,   0.0, 160.0,
+        0.0, 250.0, 120.0,
+        0.0,   0.0,   1.0]
+
+# Extrínseca 4x4 (row-major) que leva pontos do frame do LiDAR ao frame óptico
+# da câmera: P_cam = T · P_lidar.
+# Rotação: lidar x(frente)→cam z, y(esq)→cam -x, z(cima)→cam -y.
+# Translação: LiDAR 5 cm abaixo da câmera (cam +y aponta para baixo).
+extrinseca_lidar_cam:
+  - [0.0, -1.0,  0.0, 0.00]
+  - [0.0,  0.0, -1.0, 0.05]
+  - [1.0,  0.0,  0.0, 0.00]
+  - [0.0,  0.0,  0.0, 1.00]

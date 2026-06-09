@@ -153,11 +153,12 @@ def gerar(out: Path, modelo: str, n_frames: int, ruido: float, calib_path: Path,
         shutil.rmtree(out)
 
     with Writer(out, version=9, storage_plugin=StoragePlugin.MCAP) as writer:
-        c_ci   = writer.add_connection("/robot4/oakd/rgb/preview/camera_info",
+        # Nomes espelham o bag real (RealSense): ver TOPICOS_DEFAULT do leitor_rosbag.
+        c_ci   = writer.add_connection("/camera/camera/color/camera_info",
                                        "sensor_msgs/msg/CameraInfo", typestore=ts)
         c_ia   = writer.add_connection("/robot4/ia/depth_map",
                                        "sensor_msgs/msg/Image", typestore=ts)
-        c_oak  = writer.add_connection("/robot4/stereo/depth",
+        c_oak  = writer.add_connection("/camera/camera/depth/image_rect_raw",
                                        "sensor_msgs/msg/Image", typestore=ts)
         c_scan = writer.add_connection("/robot4/scan",
                                        "sensor_msgs/msg/LaserScan", typestore=ts)

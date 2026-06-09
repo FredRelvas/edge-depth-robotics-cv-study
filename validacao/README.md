@@ -12,7 +12,7 @@ modelos nem faz inferência** — só lê arrays, projeta geometria e reusa
 
 | Arquivo | Papel |
 |---------|-------|
-| `leitor_rosbag.py` | Lê `.mcap`/`.db3` via lib `rosbags`; sincroniza scan e OAK ao frame da IA por timestamp |
+| `leitor_rosbag.py` | Lê `.mcap`/`.db3` via lib `rosbags`; sincroniza scan e baseline (RealSense) ao frame da IA por timestamp |
 | `geometria.py` | LaserScan→pontos, transform LiDAR→câmera, projeção pinhole (GT = Z), amostragem |
 | `alinhamento.py` | Escala da predição: `direto` (ZoeDepth/OAK), `mediana` (Monodepth2), `afim_disparidade` (Depth-Anything) |
 | `calibracao.py` | Carrega K + extrínseca 4×4 do YAML (fonte única de verdade) |
@@ -100,14 +100,19 @@ uv run python validacao/geometria.py
 uv run python validacao/alinhamento.py
 ```
 
-## Contrato de tópicos (espelha o `record_bag.sh` do repo TB4)
+## Contrato de tópicos (bag real usa a câmera RealSense, namespace `/camera`)
 
 | Tópico | Tipo | Uso |
 |--------|------|-----|
 | `/robot4/ia/depth_map` | Image 32FC1 | `y_ia` (bruto) |
-| `/robot4/stereo/depth` | Image 16UC1 (mm) | `y_oak` baseline |
+| `/camera/camera/depth/image_rect_raw` | Image 16UC1 (mm) | `y_oak` baseline (RealSense) |
 | `/robot4/scan` | LaserScan | LiDAR (GT esparso) |
-| `/robot4/oakd/rgb/preview/camera_info` | CameraInfo | intrínseca K |
+| `/camera/camera/color/camera_info` | CameraInfo | intrínseca K |
+
+> A câmera mudou da OAK-D (plano original) para uma **Intel RealSense** — o baseline
+> passou a ser a depth registrada dela. Os nomes são sobrescrevíveis na CLI
+> (`--topico-ia`, `--topico-baseline`, `--topico-scan`, `--topico-camera-info`).
+> Se o bag não trouxer `camera_info`, o `K` é lido do YAML de calibração (fallback).
 
 ## Notas / limitações conhecidas
 

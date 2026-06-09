@@ -151,7 +151,7 @@ def avaliar_bag(
 
 
 def formatar_relatorio(resultado: Dict) -> str:
-    """Tabela legível comparando IA (modelo) vs OAK-D (baseline) vs LiDAR (GT)."""
+    """Tabela legível comparando IA (modelo) vs baseline (depth da câmera) vs LiDAR (GT)."""
     extra = ""
     if resultado.get("frames_altura_falhou"):
         extra = f"  (chão não detectado em {resultado['frames_altura_falhou']} frame(s))"
@@ -160,10 +160,10 @@ def formatar_relatorio(resultado: Dict) -> str:
         f"  Validação: {resultado['modelo']}  "
         f"(alinhamento: {resultado['modo_alinhamento']} · escala via: {resultado.get('fonte_escala','lidar')})",
         f"  Frames usados: {resultado['n_frames']}{extra}  |  "
-        f"pontos IA: {resultado['n_pontos_ia']}  pontos OAK: {resultado['n_pontos_oak']}",
+        f"pontos IA: {resultado['n_pontos_ia']}  pontos base: {resultado['n_pontos_oak']}",
         "=" * 70,
         f"  IA   vs LiDAR : {format_metrics(resultado['ia'])}",
-        f"  OAK  vs LiDAR : {format_metrics(resultado['oak'])}",
+        f"  base vs LiDAR : {format_metrics(resultado['oak'])}",
         "=" * 70,
     ]
     return "\n".join(linhas)

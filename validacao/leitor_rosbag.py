@@ -6,30 +6,36 @@ instalado) e sincroniza, para cada frame da IA, o scan do LiDAR e a profundidade
 da OAK-D mais próximos no tempo (dentro de uma tolerância) — equivalente a um
 ApproximateTime. O CameraInfo é lido uma vez (latched).
 
-Tópicos esperados (default, espelham o record_bag.sh do repo TB4):
-    /robot4/ia/depth_map               sensor_msgs/Image   (32FC1)  → y_ia
-    /robot4/stereo/depth               sensor_msgs/Image   (16UC1)  → y_oak (mm)
-    /robot4/scan                       sensor_msgs/LaserScan        → LiDAR
-    /robot4/oakd/rgb/preview/camera_info  sensor_msgs/CameraInfo    → intrínsecas K
+Tópicos esperados (default — bag real usa a câmera RealSense, namespace /camera):
+    /robot4/ia/depth_map                  sensor_msgs/Image   (32FC1)  → y_ia
+    /camera/camera/depth/image_rect_raw   sensor_msgs/Image   (16UC1)  → y_oak (mm)
+    /robot4/scan                          sensor_msgs/LaserScan        → LiDAR
+    /camera/camera/color/camera_info      sensor_msgs/CameraInfo       → intrínsecas K
+
+Os tópicos são sobrescrevíveis em ler_bag(topicos=...). Se o bag não trouxer
+camera_info (o primeiro bag real não trouxe), o K pode vir do YAML de calibração
+via intrinseca_fallback/dims_fallback.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
 from rosbags.highlevel import AnyReader
+from rosbags.typesys import Stores, get_typestore
 
 
-# Tópicos default (sobrescrevíveis em ler_bag).
+# Tópicos default (sobrescrevíveis em ler_bag). "oak" = baseline de profundidade,
+# hoje a depth registrada da RealSense (antes era o estéreo da OAK-D).
 TOPICOS_DEFAULT = {
     "ia":          "/robot4/ia/depth_map",
-    "oak":         "/robot4/stereo/depth",
+    "oak":         "/camera/camera/depth/image_rect_raw",
     "scan":        "/robot4/scan",
-    "camera_info": "/robot4/oakd/rgb/preview/camera_info",
+    "camera_info": "/camera/camera/color/camera_info",
 }
 
 
@@ -112,14 +118,18 @@ def ler_bag(
     caminho: str | Path,
     topicos: Optional[Dict[str, str]] = None,
     tolerancia_ms: float = 50.0,
+    intrinseca_fallback: Optional[np.ndarray] = None,
+    dims_fallback: Optional[Tuple[int, int]] = None,
 ) -> List[AmostraSincronizada]:
     """
     Lê o bag e devolve a lista de amostras sincronizadas.
 
     Args:
-        caminho:       diretório do rosbag2 (.mcap/.db3) ou arquivo.
-        topicos:       dict com chaves ia/oak/scan/camera_info (default TOPICOS_DEFAULT).
-        tolerancia_ms: janela máxima de casamento temporal por mensagem.
+        caminho:             diretório do rosbag2 (.mcap/.db3) ou arquivo.
+        topicos:             dict com chaves ia/oak/scan/camera_info (default TOPICOS_DEFAULT).
+        tolerancia_ms:       janela máxima de casamento temporal por mensagem.
+        intrinseca_fallback: K 3x3 usado se o bag não trouxer camera_info (vem do YAML).
+        dims_fallback:       (largura, altura) de referência do K do fallback.
     Returns:
         Lista de AmostraSincronizada, uma por frame da IA com scan e OAK casados.
     """
@@ -133,7 +143,8 @@ def ler_bag(
     largura_ref = altura_ref = None
 
     caminho = Path(caminho)
-    with AnyReader([caminho]) as reader:
+    typestore = get_typestore(Stores.ROS2_HUMBLE)
+    with AnyReader([caminho], default_typestore=typestore) as reader:
         alvos = {topicos["ia"], topicos["oak"], topicos["scan"], topicos["camera_info"]}
         conexoes = [c for c in reader.connections if c.topic in alvos]
         for conexao, _t, dados in reader.messages(connections=conexoes):
@@ -159,10 +170,15 @@ def ler_bag(
                 scan_msgs.append((_stamp_ns(msg), scan))
 
     if K is None:
-        raise ValueError(
-            f"CameraInfo não encontrado no tópico {topicos['camera_info']!r}. "
-            "Sem intrínsecas não há projeção."
-        )
+        # Sem camera_info no bag: cai no K do YAML de calibração, se fornecido.
+        if intrinseca_fallback is None or dims_fallback is None:
+            raise ValueError(
+                f"CameraInfo não encontrado no tópico {topicos['camera_info']!r} e "
+                "nenhum K de fallback foi passado. Forneça as intrínsecas no YAML "
+                "de calibração (intrinseca_fallback/dims_fallback). Sem K não há projeção."
+            )
+        K = np.asarray(intrinseca_fallback, dtype=np.float64).reshape(3, 3)
+        largura_ref, altura_ref = int(dims_fallback[0]), int(dims_fallback[1])
 
     amostras: List[AmostraSincronizada] = []
     for stamp, ia_depth in sorted(ia_msgs):

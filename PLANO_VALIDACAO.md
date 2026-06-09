@@ -1,8 +1,15 @@
 # Plano de Validação no TurtleBot4
 
+> **Atualização (2026-06-09) — a câmera mudou para Intel RealSense.** O primeiro bag
+> real veio com uma **RealSense** (namespace `/camera/camera/...`), não a OAK-D que este
+> plano assumia. O **baseline passou a ser a depth da RealSense**
+> (`/camera/camera/depth/image_rect_raw`, em mm). O pipeline offline (`validacao/`) já foi
+> adaptado a isso. Ver **`DIAGNOSTICO_BAG.md`** para o estado do bag e os ajustes
+> pendentes do lado do robô. Onde abaixo se lê "OAK-D", leia "RealSense".
+
 Validação prática dos modelos de estimativa de profundidade replicados neste
 repositório, rodando num **TurtleBot4 real** e comparando suas predições com a
-profundidade do **estéreo nativo da OAK-D** (baseline) e com a distância medida
+profundidade do **depth da câmera estéreo** (baseline) e com a distância medida
 pelo **LiDAR** (ground truth).
 
 > **Pergunta científica:** para cada modelo, o depth estimado por deep learning
@@ -53,12 +60,16 @@ matrizes de transformação, monta a tabela de validação e calcula as métrica
 
 ### Frente 1 — Preparar o robô (repo TB4)
 
+> Status pós-primeiro-bag em `DIAGNOSTICO_BAG.md`. Bloqueadores atuais: **IA saindo
+> constante** (não infere), **sem `camera_info` gravado** e **extrínseca LiDAR→RealSense
+> ausente na TF**.
+
 | # | Tarefa |
 |---|--------|
-| 1.1 | Habilitar o **estéreo da OAK-D**: publicar `/robot4/stereo/depth` + `camera_info`, alinhado ao frame RGB (hoje a config é RGB-only, `i_pipeline_type: RGB`). |
-| 1.2 | Corrigir o `depth_node.py` para publicar depth **RAW** (float32), **sem a normalização min-max por frame** — caso contrário o `y_ia` gravado perde a escala métrica. Manter a versão colorizada apenas para visualização/vídeo. |
-| 1.3 | (opcional) Aumentar a resolução do RGB preview — 250×250 é baixo para projeção precisa do LiDAR. |
-| 1.4 | Ajustar o `record_bag.sh` para gravar, por run: RGB, `ia/depth_map` (raw), `stereo/depth`, ambos `camera_info`, `scan`, `tf`/`tf_static`, `odom`. |
+| 1.1 | **A IA precisa inferir de fato.** No primeiro bag `/robot4/ia/depth_map` saiu praticamente constante (~0,5, std 0,001 na imagem toda). Verificar: pesos carregados, e que o nó assina a color da RealSense **`/camera/camera/color/image_raw`** como entrada. |
+| 1.2 | Corrigir o `depth_node.py` para publicar depth **RAW** (float32, metros), **sem a normalização min-max por frame** — caso contrário o `y_ia` gravado perde a escala métrica. Manter a versão colorizada apenas para visualização/vídeo. |
+| 1.3 | Lançar a RealSense com **`align_depth:=true`** (depth registrada na color) e confirmar a resolução de saída da IA (640×192 — como o resize é feito: squash ou crop?). |
+| 1.4 | Ajustar o `record_bag.sh` para gravar, por run: `color/image_raw`, `ia/depth_map` (raw), `depth/image_rect_raw`, **ambos os `camera_info`** (`color` e `depth`), `scan`, `tf`/`tf_static`, `odom`. |
 | 1.5 | Exportar ZoeDepth e Monodepth2 para ONNX → TensorRT e adicionar como backends do `depth_node` (Depth-Anything já existe). |
 
 ### Frente 2 — Coleta (3 runs)
@@ -72,8 +83,8 @@ matrizes de transformação, monta a tabela de validação e calcula as métrica
 
 | # | Tarefa |
 |---|--------|
-| 3.1 | Extrair as intrínsecas da câmera a partir do `camera_info` gravado. |
-| 3.2 | Obter a extrínseca **LiDAR → câmera**: partir da TF do URDF, validar com sanity check de reprojeção; calibrar de fato se o erro for grande. |
+| 3.1 | Extrair as intrínsecas da RealSense a partir do `camera_info` gravado (ou intrínsecas de fábrica enquanto não for gravado). |
+| 3.2 | Obter a extrínseca **LiDAR → RealSense**: ela **não** está na TF (só há frames da OAK e do `rplidar_link`). Publicar um `static_transform_publisher` `rplidar_link → camera_link` (medição física) ou calibrar; validar com sanity check de reprojeção. |
 
 ### Frente 4 — Pipeline offline (neste repo, ambiente `uv`)
 

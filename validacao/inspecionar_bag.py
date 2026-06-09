@@ -25,6 +25,7 @@ from pathlib import Path
 
 import numpy as np
 from rosbags.highlevel import AnyReader
+from rosbags.typesys import Stores, get_typestore
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from leitor_rosbag import _decodificar_imagem  # reusa o decodificador de imagem
@@ -60,7 +61,8 @@ def _primeira_msg(reader, topico):
 
 
 def inspecionar(caminho: Path):
-    with AnyReader([caminho]) as reader:
+    typestore = get_typestore(Stores.ROS2_HUMBLE)
+    with AnyReader([caminho], default_typestore=typestore) as reader:
         dur_s = reader.duration / 1e9 if reader.duration else 0.0
 
         print("=" * 74)

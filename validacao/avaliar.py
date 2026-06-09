@@ -40,11 +40,29 @@ def main():
                          "altura: escala pela altura da câmera ao chão (independente do LiDAR)")
     ap.add_argument("--altura-camera", type=float, default=None,
                     help="altura da câmera ao chão em metros (obrigatório com --fonte-escala altura)")
+    # Overrides de nome de tópico (default = RealSense; ver inspecionar_bag.py).
+    ap.add_argument("--topico-ia", default=None, help="tópico da predição da IA")
+    ap.add_argument("--topico-baseline", default=None,
+                    help="tópico da depth baseline (default: RealSense depth)")
+    ap.add_argument("--topico-scan", default=None, help="tópico do LaserScan")
+    ap.add_argument("--topico-camera-info", default=None, help="tópico do CameraInfo")
     ap.add_argument("--saida", type=Path, default=None, help="salva o resultado em JSON")
     args = ap.parse_args()
 
     calib = carregar_calibracao(args.calibracao)
-    amostras = ler_bag(args.bag, tolerancia_ms=args.tolerancia_ms)
+
+    # Monta os overrides de tópico só com o que foi passado.
+    topicos = {k: v for k, v in {
+        "ia": args.topico_ia,
+        "oak": args.topico_baseline,
+        "scan": args.topico_scan,
+        "camera_info": args.topico_camera_info,
+    }.items() if v is not None} or None
+
+    # Se o bag não tiver camera_info, o K vem do YAML de calibração (fallback).
+    amostras = ler_bag(args.bag, topicos=topicos, tolerancia_ms=args.tolerancia_ms,
+                       intrinseca_fallback=calib.K,
+                       dims_fallback=(calib.largura, calib.altura))
     if not amostras:
         print("Nenhuma amostra sincronizada encontrada no bag — verifique tópicos e tolerância.")
         sys.exit(1)

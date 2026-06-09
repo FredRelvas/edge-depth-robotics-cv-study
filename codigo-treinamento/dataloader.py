@@ -299,29 +299,48 @@ def build_icl_dataloaders(
     scenes: Sequence[str] = ("deer", "diamond"),
     image_size: int | Tuple[int, int] = 256,
     batch_size: int = 8,
+    eval_batch_size: Optional[int] = None,
     num_workers: int = 4,
     pin_memory: bool = True,
     depth_scale: float = DEFAULT_DEPTH_SCALE,
 ) -> Dict[str, DataLoader]:
-    """Cria 'train', 'val' e 'test' com as convenções do paper."""
+    """
+    Cria 'train', 'val' e 'test' com as convenções do paper.
+
+    Args:
+        batch_size:      batch do TREINO.
+        eval_batch_size: batch do val/test. Se None, usa o mesmo do treino.
+                         Para ZoeDepth com fine-tune completo do BEiT em GPU
+                         24GB, recomenda-se eval_batch_size=1 — o BEiT-Large
+                         ainda consome muita memória nos act_postprocess (o
+                         torch.cat dobra os feature maps temporariamente),
+                         então batch pequeno no eval é a forma mais robusta
+                         de evitar OOM logo após o treino.
+    """
+    if eval_batch_size is None:
+        eval_batch_size = batch_size
+
     common = dict(root=root, scene=scenes, image_size=image_size, depth_scale=depth_scale)
     train_ds = ICLGroundRobotDataset(**common, split="train", augment=True)
     val_ds   = ICLGroundRobotDataset(**common, split="val",   augment=False)
     test_ds  = ICLGroundRobotDataset(**common, split="test",  augment=False)
 
     print(f"[ICL] train={len(train_ds)}  val={len(val_ds)}  test={len(test_ds)}  "
-          f"(cenas={list(scenes)})")
+          f"(cenas={list(scenes)})  "
+          f"batch_train={batch_size}  batch_eval={eval_batch_size}")
 
-    loader_kwargs = dict(
-        batch_size=batch_size,
+    common_kwargs = dict(
         num_workers=num_workers,
         pin_memory=pin_memory,
         persistent_workers=num_workers > 0,
     )
     return {
-        "train": DataLoader(train_ds, shuffle=True,  drop_last=True,  **loader_kwargs),
-        "val":   DataLoader(val_ds,   shuffle=False, drop_last=False, **loader_kwargs),
-        "test":  DataLoader(test_ds,  shuffle=False, drop_last=False, **loader_kwargs),
+        "train": DataLoader(train_ds, batch_size=batch_size,
+                            shuffle=True,  drop_last=True,  **common_kwargs),
+        "val":   DataLoader(val_ds,   batch_size=eval_batch_size,
+                            shuffle=False, drop_last=False, **common_kwargs),
+        "test":  DataLoader(test_ds,  batch_size=eval_batch_size,
+                            shuffle=False, drop_last=False, **common_kwargs),
     }
 
 

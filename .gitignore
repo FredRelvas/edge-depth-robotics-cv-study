@@ -17,14 +17,35 @@ __pycache__/
 dados/icl_ground_robot/
 !dados/.gitkeep
 
-# Modelos treinados (pesados)
+# Modelos treinados (pesados) — cobre os nomes com hífen e com underscore
 modelos-treinados/*.pth
 modelos-treinados/*.pt
 modelos-treinados/*.onnx
 modelos-treinados/*.engine
 !modelos-treinados/.gitkeep
+modelos_treinados/*.pth
+modelos_treinados/*.pt
+modelos_treinados/*.onnx
+modelos_treinados/*.engine
+!modelos_treinados/.gitkeep
 
 # Tensorboard / logs
 runs/
 logs/
 *.log
+
+# Logs e checkpoints de treino
+runs/
+
+# Repos clonados de terceiros (ZoeDepth, monodepth2)
+external/
+
+# Artefatos gerados pelo pipeline de quantização (pesados)
+quantizacao/onnx/*
+quantizacao/engines/*
+quantizacao/calibracao/*
+!quantizacao/onnx/.gitkeep
+!quantizacao/engines/.gitkeep
+!quantizacao/calibracao/.gitkeep
+*.engine
+*.cache

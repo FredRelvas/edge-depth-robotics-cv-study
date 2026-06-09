@@ -49,3 +49,11 @@ quantizacao/calibracao/*
 !quantizacao/calibracao/.gitkeep
 *.engine
 *.cache
+
+# Resultados de validação (gerados pelo validacao/avaliar.py)
+resultados/*
+!resultados/.gitkeep
+
+# Rosbags (reais ou sintéticos)
+*.mcap
+*.db3

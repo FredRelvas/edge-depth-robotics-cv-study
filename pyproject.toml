@@ -2,7 +2,7 @@
 name = "trabalho-final"
 version = "0.1.0"
 description = "Repositório de treinamento de modelos de visão computacional"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.11"
 dependencies = [
     # Deep learning
     "torch>=2.2.0",

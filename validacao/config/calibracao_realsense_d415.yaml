@@ -1,0 +1,17 @@
+camera:
+  largura: 640
+  altura: 480
+  # Intrínseca extraída do tópico /camera/camera/color/camera_info
+  # bag: experimento_monodepth2_20260610_121551
+  k: [607.95556640625, 0.0, 315.3634338378906,
+      0.0, 607.387451171875, 234.3334503173828,
+      0.0, 0.0, 1.0]
+
+# Extrínseca placeholder — LiDAR montado em relação à câmera
+# CALIBRAÇÃO MANUAL — substituir por medição real quando disponível
+# Eixos: x=frente, y=esquerda, z=cima (em metros)
+extrinseca_lidar_cam:
+  - [0.0, -1.0,  0.0,  0.05]
+  - [0.0,  0.0, -1.0,  0.10]
+  - [1.0,  0.0,  0.0,  0.00]
+  - [0.0,  0.0,  0.0,  1.00]

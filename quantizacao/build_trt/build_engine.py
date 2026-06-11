@@ -28,6 +28,10 @@ import argparse
 from pathlib import Path
 
 import numpy as np
+# pycuda.autoinit DEVE ser importado antes do tensorrt para garantir
+# que ambos usem o mesmo contexto CUDA (TRT avisa se o contexto mudar).
+import pycuda.autoinit  # noqa: F401
+import pycuda.driver as _cuda_drv
 import tensorrt as trt
 
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
@@ -55,8 +59,7 @@ def preprocess(path: str, h: int, w: int) -> np.ndarray:
 class ImageCalibrator(trt.IInt8EntropyCalibrator2):
     def __init__(self, calib_dir: Path, shape, cache_file: Path):
         super().__init__()
-        import pycuda.driver as cuda
-        self.cuda = cuda
+        self.cuda = _cuda_drv
         self.cache_file = Path(cache_file)
         _, c, h, w = shape
         self.h, self.w = h, w
@@ -67,7 +70,7 @@ class ImageCalibrator(trt.IInt8EntropyCalibrator2):
             raise RuntimeError(f"Sem imagens de calibração em {calib_dir}")
         print(f"[calib] {len(self.files)} imagens, input {c}x{h}x{w}")
         self.idx = 0
-        self.device_input = cuda.mem_alloc(
+        self.device_input = self.cuda.mem_alloc(
             int(np.prod((self.batch_size, c, h, w)) * 4))   # float32
 
     def get_batch_size(self):
@@ -131,8 +134,20 @@ def build(onnx_path: Path, output: Path, precision: str,
         if calib_dir is None:
             raise SystemExit("[erro] --precision int8 exige --calib_dir.")
         config.set_flag(trt.BuilderFlag.INT8)
-        # FP16 junto com INT8 deixa o builder escolher o melhor por camada.
         config.set_flag(trt.BuilderFlag.FP16)
+        config.set_flag(trt.BuilderFlag.GPU_FALLBACK)
+        # TRT 10.3 + SM 8.7 (Orin Nano): não existe kernel INT8 para max_pool2d.
+        # Força cada camada de Pooling para FP16; o restante da rede fica INT8.
+        config.set_flag(trt.BuilderFlag.PREFER_PRECISION_CONSTRAINTS)
+        n_pool = 0
+        for i in range(network.num_layers):
+            layer = network.get_layer(i)
+            if layer.type == trt.LayerType.POOLING:
+                layer.precision = trt.DataType.HALF
+                layer.set_output_type(0, trt.DataType.HALF)
+                n_pool += 1
+        if n_pool:
+            print(f"[build] {n_pool} camada(s) Pooling forçadas para FP16 (workaround SM 8.7)")
         cache = calib_cache or output.with_suffix(".cache")
         config.int8_calibrator = ImageCalibrator(calib_dir, in_shape, cache)
     # fp32 = sem flags

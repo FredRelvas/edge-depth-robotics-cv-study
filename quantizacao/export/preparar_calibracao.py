@@ -33,12 +33,14 @@ def main():
     ap.add_argument("--data_root", default=str(PROJECT_ROOT / "dados" / "icl_ground_robot"))
     ap.add_argument("--image_size", type=int, default=256,
                     help="só usado para instanciar o dataset; copiamos o PNG original.")
+    ap.add_argument("--scene", nargs="+", default=["deer", "diamond"],
+                    help="cenas a usar (default: deer diamond).")
     args = ap.parse_args()
 
     from dataloader import ICLGroundRobotDataset
 
     ds = ICLGroundRobotDataset(
-        root=args.data_root, scene=("deer", "diamond"),
+        root=args.data_root, scene=tuple(args.scene),
         split="train", image_size=args.image_size, augment=False,
     )
     n = min(args.n, len(ds))

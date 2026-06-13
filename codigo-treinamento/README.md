@@ -8,7 +8,7 @@ no dataset **ICL Ground Robot** do Pering Laboratory (Imperial College London).
 ## Estrutura do repositório
 
 ```
-trabalho-final-visao/
+edge-depth-robotics-cv-study/
 ├── codigo-treinamento/
 │   ├── baixar_dados.py     # baixa e organiza o dataset ICL
 │   └── dataloader.py       # ICLGroundRobotDataset (PyTorch)
@@ -45,7 +45,7 @@ para que o comando `uv` fique disponível.
 
 ```bash
 git clone <url-do-repositorio>
-cd trabalho-final-visao
+cd edge-depth-robotics-cv-study
 ```
 
 ### 3. Instalar as dependências

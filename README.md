@@ -73,8 +73,8 @@ Usa [`uv`](https://docs.astral.sh/uv/) para um ambiente reproduzível:
 # instalar o uv (macOS/Linux)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-git clone https://github.com/FredRelvas/trabalho-final-visao
-cd trabalho-final-visao
+git clone https://github.com/FredRelvas/edge-depth-robotics-cv-study
+cd edge-depth-robotics-cv-study
 uv sync
 ```
 
@@ -104,7 +104,7 @@ tópicos.
 
 ## Disponibilidade de código e dados
 
-- **Pipeline de validação (este repo):** <https://github.com/FredRelvas/trabalho-final-visao>
+- **Pipeline de validação (este repo):** <https://github.com/FredRelvas/edge-depth-robotics-cv-study>
 - **Setup do robô (ROS2):** <https://github.com/JoaoGChv/TB4>
 - **Checkpoints treinados:** Hugging Face — `SrRyan/depth-icl-ground-robot`
 - **Dataset de treino/fine-tuning:** <https://www.kaggle.com/datasets/fredericorelvas/datasets-depht-models>

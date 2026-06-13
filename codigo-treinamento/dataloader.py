@@ -1,5 +1,5 @@
 """
-Dataloader do ICL Ground Robot para o trabalho-final-visao.
+Dataloader do ICL Ground Robot para o edge-depth-robotics-cv-study.
 
 Implementa o split 70/10/20 sequencial por cena conforme Vizzotto et al.
 (RITA 2025), com faixa válida de profundidade de 1mm a 10m.

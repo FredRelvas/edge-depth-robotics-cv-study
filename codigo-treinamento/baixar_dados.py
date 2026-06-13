@@ -2,7 +2,7 @@
 Baixa e organiza o dataset ICL Ground Robot (Saeedi et al., ICRA 2019)
 em ./dados/icl_ground_robot/.
 
-Uso (a partir da raiz do projeto trabalho-final-visao):
+Uso (a partir da raiz do projeto edge-depth-robotics-cv-study):
 
     uv run python codigo-treinamento/baixar_dados.py
     # ou, para customizar:

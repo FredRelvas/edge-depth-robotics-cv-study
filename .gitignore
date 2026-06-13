@@ -57,3 +57,14 @@ resultados/*
 # Rosbags (reais ou sintéticos)
 *.mcap
 *.db3
+
+# macOS
+.DS_Store
+
+# Documentos de referência e de entrega (não poluir o repo)
+*.pdf
+*.docx
+modelosparapublicaodeartigos/
+
+# Artigo (fonte LaTeX + zip) — escrito/compilado no Overleaf, não versionar aqui
+artigo/

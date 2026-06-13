@@ -68,3 +68,7 @@ modelosparapublicaodeartigos/
 
 # Artigo (fonte LaTeX + zip) — escrito/compilado no Overleaf, não versionar aqui
 artigo/
+
+# Documentos internos da jornada (planejamento/diagnóstico) — não fazem parte
+# do material público linkado pelo artigo
+docs-internos/

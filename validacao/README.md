@@ -2,7 +2,8 @@
 
 Lê um rosbag gravado num run do TurtleBot4, projeta o LiDAR 2D sobre os pixels da
 imagem e calcula as métricas de profundidade comparando **cada modelo** com o
-**baseline (OAK-D)** e o **ground truth (LiDAR)**. Ver `PLANO_VALIDACAO.md` na raiz.
+**baseline (RealSense)** e o **ground truth (LiDAR)**. Ver o `README.md` na raiz
+para a visão geral do pipeline.
 
 Como a predição da IA (`y_ia`) é gravada ao vivo no bag, este pipeline **não carrega
 modelos nem faz inferência** — só lê arrays, projeta geometria e reusa
@@ -14,9 +15,9 @@ modelos nem faz inferência** — só lê arrays, projeta geometria e reusa
 |---------|-------|
 | `leitor_rosbag.py` | Lê `.mcap`/`.db3` via lib `rosbags`; sincroniza scan e baseline (RealSense) ao frame da IA por timestamp |
 | `geometria.py` | LaserScan→pontos, transform LiDAR→câmera, projeção pinhole (GT = Z), amostragem |
-| `alinhamento.py` | Escala da predição: `direto` (ZoeDepth/OAK), `mediana` (Monodepth2), `afim_disparidade` (Depth-Anything) |
+| `alinhamento.py` | Escala da predição: `direto` (ZoeDepth / baseline métrico), `mediana` (Monodepth2), `afim_disparidade` (Depth-Anything) |
 | `calibracao.py` | Carrega K + extrínseca 4×4 do YAML (fonte única de verdade) |
-| `avaliacao.py` | Monta a tabela esparsa `y_lidar/y_oak/y_ia`, limpa inválidos, chama as métricas |
+| `avaliacao.py` | Monta a tabela esparsa `y_lidar/y_oak/y_ia` (`y_oak` = baseline, nome interno legado), limpa inválidos, chama as métricas |
 | `avaliar.py` | CLI |
 | `gerar_bag_sintetico.py` | Gera um `.mcap` com geometria conhecida para testar sem o robô |
 | `config/calibracao_exemplo.yaml` | Intrínseca + extrínseca de exemplo |
@@ -81,7 +82,7 @@ uv run python validacao/avaliar.py --bag /tmp/sim_zoe --modelo zoedepth
 ```
 
 Com a cena sintética (ruído pequeno), o esperado é `Abs Rel ≈ 0`, `RMSE ≈ 0 m`,
-`δ<1.25 ≈ 1.0` — tanto para a IA quanto para o OAK-D — confirmando que projeção,
+`δ<1.25 ≈ 1.0` — tanto para a IA quanto para o baseline — confirmando que projeção,
 amostragem, alinhamento e métricas estão corretos. Trocar `--modelo` por
 `monodepth2`/`depthanything` exercita os outros alinhamentos.
 

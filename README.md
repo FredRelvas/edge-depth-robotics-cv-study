@@ -1,223 +1,119 @@
-# Trabalho Final Visão
+# Estimativa de profundidade monocular embarcada em robótica móvel
 
-Replicação do estudo de Vizzotto et al. (RITA 2025) — *Case Study of Deep
-Learning Methods for Depth Estimation in Indoor Ground Robotics* — comparando
-**ZoeDepth** (supervisionado, métrico) e **Monodepth2** (autossupervisionado)
-no dataset **ICL Ground Robot** do Pering Laboratory (Imperial College London).
+Avaliação de modelos de **estimativa monocular de profundidade** executados
+**a bordo de um TurtleBot4 real**, comparando suas predições com o *ground truth*
+de um **LiDAR 2D** e com a profundidade do **sensor RGB-D nativo** (baseline).
+
+O trabalho é uma **extensão direta** de Vizzotto et al. (RITA 2025) —
+*Case Study of Deep Learning Methods for Depth Estimation in Indoor Ground
+Robotics* —, que avaliou os modelos **em simulação/offline**. Aqui levamos a
+avaliação para o **embarcado**: os modelos são quantizados e rodam numa
+**Jetson Orin Nano** dentro do robô, e a comparação é feita contra sensores
+físicos durante trajetórias reais.
+
+## Modelos avaliados
+
+| Modelo | Tipo | Saída | Alinhamento de escala |
+|---|---|---|---|
+| **Monodepth2** (fine-tunado) | autossupervisionado | até-escala | mediana (1 grau de liberdade) |
+| **Depth-Anything v2** *frozen* | relativo | disparidade | afim (escala + *shift*) |
+| **Depth-Anything v2** *trainable* | relativo | disparidade | afim (escala + *shift*) |
+
+> **ZoeDepth** (o segundo modelo do RITA 2025) **não** foi avaliado a bordo:
+> como modelo métrico mais pesado, esbarrou em restrições de hardware e de
+> quantização no embarcado. O código de treino/exportação dele permanece no
+> repositório (`codigo-treinamento/`, `quantizacao/`) documentando a tentativa,
+> e a sua inclusão fica como trabalho futuro (ver o artigo).
+
+## Hardware
+
+- **Robô:** TurtleBot4
+- **Computação embarcada:** NVIDIA Jetson Orin Nano
+- **Câmera:** Intel RealSense D415 (RGB + depth nativo → *baseline*)
+- **Ground truth:** RPLiDAR A1 (LiDAR 2D)
+
+## Pipeline (visão geral)
+
+```
+treino/fine-tuning        quantização            execução no robô        validação offline
+(codigo-treinamento/)  →  (quantizacao/)     →   (Jetson + ROS2)     →   (validacao/)
+   dataset ICL             ONNX → TensorRT         grava rosbags          rosbag → métricas
+                           FP16/INT8                                       (IA × LiDAR × baseline)
+```
+
+A inferência da IA é gravada **ao vivo** no rosbag durante o run. A validação
+(`validacao/`) **não** recarrega modelos: ela lê os arrays do bag, projeta o
+LiDAR sobre os pixels da imagem (gerando o *ground truth* esparso), aplica o
+**mesmo alinhamento de escala** à predição da IA e ao baseline, e calcula as
+métricas. Esse alinhamento simétrico é o que torna a comparação IA × baseline
+justa por construção (detalhes na metodologia do artigo).
 
 ## Estrutura do repositório
 
 ```
-trabalho-final-visao/
-├── codigo-treinamento/
-│   ├── baixar_dados.py     # baixa e organiza o dataset ICL
-│   └── dataloader.py       # ICLGroundRobotDataset (PyTorch)
-├── dados/
-│   └── icl_ground_robot/   # criado por baixar_dados.py (~3GB, ignorado pelo git)
-├── metricas/
-│   └── metricas.py         # 7 métricas do paper (Abs Rel, RMSE, δ<1.25 etc.)
-├── modelos-treinados/      # checkpoints (.pth/.onnx/.engine) ignorados pelo git
-├── pyproject.toml
-├── uv.lock
+.
+├── codigo-treinamento/   # fine-tuning dos modelos no dataset ICL Ground Robot
+│   └── README.md         #   (documentação detalhada do treino e do dataloader)
+├── quantizacao/          # exportação ONNX + compilação TensorRT (FP16/INT8) p/ Jetson
+├── validacao/            # pipeline offline: rosbag → projeção LiDAR → métricas
+├── metricas/             # as 7 métricas de profundidade (Abs Rel, RMSE, δ<1.25, ...)
+├── scripts/              # orquestradores run_*.sh dos experimentos
+├── dados/                # rosbags e dataset (ignorados pelo git)
+├── modelos_treinados/    # checkpoints .pth/.onnx/.engine (ignorados pelo git)
+├── resultados/           # saídas de validação em JSON (ignoradas pelo git)
+├── pyproject.toml / uv.lock
 └── README.md
 ```
 
----
-
 ## Instalação
 
-### 1. Instalar o uv (caso não tenha)
+Usa [`uv`](https://docs.astral.sh/uv/) para um ambiente reproduzível:
 
-**macOS / Linux:**
 ```bash
+# instalar o uv (macOS/Linux)
 curl -LsSf https://astral.sh/uv/install.sh | sh
-```
 
-**Windows:**
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-Após instalar, reinicie o terminal (ou rode `export PATH="$HOME/.local/bin:$PATH"`)
-para que o comando `uv` fique disponível.
-
-### 2. Clonar o repositório
-
-```bash
-git clone <url-do-repositorio>
+git clone https://github.com/FredRelvas/trabalho-final-visao
 cd trabalho-final-visao
-```
-
-### 3. Instalar as dependências
-
-```bash
 uv sync
 ```
 
-O `uv` cria automaticamente um ambiente virtual em `.venv/` e instala todas as
-dependências fixadas no `uv.lock`, garantindo o mesmo ambiente em qualquer máquina.
+O `uv sync` cria o `.venv/` e instala as dependências fixadas no `uv.lock`.
+Para detalhes de CUDA/GPU e do fluxo de **treino**, ver
+[`codigo-treinamento/README.md`](codigo-treinamento/README.md).
 
-### 4. Verificar a GPU
-
-```bash
-uv run python -c "import torch; print('CUDA:', torch.cuda.is_available(), '| GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'none')"
-```
-
-Esperado:
-
-```
-CUDA: True | GPU: NVIDIA GeForce RTX 4090
-```
-
-Se vier `CUDA: False`, consulte a seção [GPU / CUDA](#gpu--cuda) abaixo.
-
----
-
-## Fluxo de uso
-
-### 1. Baixar o dataset ICL Ground Robot
+## Como reproduzir a validação
 
 ```bash
-uv run python codigo-treinamento/baixar_dados.py
-```
-
-Baixa as cenas **Deer** e **Diamond** (1600 frames RGB-D cada, ~3GB no total) do
-Pering Laboratory e organiza em `dados/icl_ground_robot/`. O dataset **não é
-versionado** pelo git — cada máquina baixa localmente.
-
-Layout resultante:
-
-```
-dados/icl_ground_robot/
-├── deer/
-│   ├── frames/deer_robot/
-│   │   ├── cam0/data/       # 1600 PNGs RGB (640x480)
-│   │   ├── depth0/data/     # 1600 PNGs depth (uint16, escala 1mm)
-│   │   ├── cameraInfo.txt
-│   │   └── poses.gt
-│   └── trajectory.gt
-└── diamond/
-    └── ... (mesma estrutura)
-```
-
-### 2. Testar o dataloader
-
-```bash
-uv run python codigo-treinamento/dataloader.py --scene deer
-```
-
-Saída esperada (split 70/10/20 conforme paper, faixa de profundidade plausível):
-
-```
-[deer   /train]  N=1120  rgb=(3, 256, 256)  depth=(1, 256, 256)  depth_min=0.264m  depth_max=6.688m  valid_frac=1.000
-[deer   /val  ]  N= 160  rgb=(3, 256, 256)  depth=(1, 256, 256)  depth_min=0.265m  depth_max=8.547m  valid_frac=1.000
-[deer   /test ]  N= 320  rgb=(3, 256, 256)  depth=(1, 256, 256)  depth_min=0.273m  depth_max=4.379m  valid_frac=1.000
-```
-
-### 3. Testar as métricas
-
-```bash
+# 1. (uma vez) sanity-check das métricas
 uv run python metricas/metricas.py
+
+# 2. validar um rosbag contra LiDAR + baseline
+uv run python validacao/avaliar.py \
+    --bag dados/<rosbag_da_run> \
+    --modelo monodepth2 \
+    --calibracao validacao/config/calibracao_realsense_d415.yaml \
+    --saida resultados/monodepth2.json
 ```
 
-Roda 5 sanity tests (predição perfeita, erro proporcional, threshold delta,
-alinhamento por mediana, máscara externa). Todos devem passar.
+Trocar `--modelo` por `dav2_frozen` ou `dav2_trainable` para os demais.
+Antes de rodar com um bag novo, inspecione o conteúdo com
+`uv run python validacao/inspecionar_bag.py`. Ver
+[`validacao/README.md`](validacao/README.md) para os módulos e o contrato dos
+tópicos.
 
-### 4. Usar no seu script de treino
+## Disponibilidade de código e dados
 
-```python
-import sys
-sys.path.insert(0, "codigo-treinamento")
-sys.path.insert(0, "metricas")
-
-from dataloader import build_icl_dataloaders
-from metricas import compute_depth_metrics, aggregate_batch_metrics, format_metrics
-
-# DataLoaders prontos com split do paper
-loaders = build_icl_dataloaders(
-    scenes=("deer", "diamond"),
-    image_size=256,        # ZoeDepth DPT_SwinV2_T_256
-    batch_size=8,
-    num_workers=4,
-)
-
-# Loop de treino
-for epoch in range(40):
-    model.train()
-    for batch in loaders["train"]:
-        rgb   = batch["rgb"].cuda(non_blocking=True)    # [B, 3, 256, 256]
-        gt    = batch["depth"].cuda(non_blocking=True)  # [B, 1, 256, 256] em metros
-        valid = batch["valid"].cuda(non_blocking=True)  # [B, 1, 256, 256] máscara
-        ...
-
-    # Validação
-    model.eval()
-    batch_metrics = []
-    with torch.no_grad():
-        for batch in loaders["val"]:
-            pred = model(batch["rgb"].cuda())
-            batch_metrics.append(compute_depth_metrics(
-                pred, batch["depth"].cuda(), valid=batch["valid"].cuda(),
-                median_align=False,   # True para Monodepth2
-            ))
-    print(f"Época {epoch}:", format_metrics(aggregate_batch_metrics(batch_metrics)))
-```
-
----
-
-## GPU / CUDA
-
-Por padrão, o `pyproject.toml` está configurado para **CUDA 12.6** (compatível
-com a RTX 4090 e drivers modernos).
-
-Se sua workstation usa outra versão de CUDA, edite o `pyproject.toml` e
-substitua `cu126` pela sua versão (4 ocorrências):
-
-| CUDA | Substituir por |
-|------|----------------|
-| 12.1 | `cu121` |
-| 12.4 | `cu124` |
-| 12.6 | `cu126` (default) |
-
-Depois rode:
-
-```bash
-uv sync --reinstall-package torch --reinstall-package torchvision --reinstall-package torchaudio
-```
-
-Em **macOS** (Apple Silicon), o `uv` cai automaticamente no PyPI padrão (que já
-vem com suporte MPS) — não precisa fazer nada.
-
----
-
-## Dependências principais
-
-| Categoria | Bibliotecas |
-|-----------|-------------|
-| Deep learning | `torch`, `torchvision`, `torchaudio` |
-| Visão computacional | `opencv-python`, `Pillow`, `albumentations` |
-| Dados | `numpy`, `scikit-learn`, `pandas` |
-| Visualização | `matplotlib`, `seaborn` |
-| Experimentos | `tensorboard` |
-| Utilitários | `tqdm`, `PyYAML` |
-
-Para adicionar uma nova biblioteca:
-
-```bash
-uv add <nome-do-pacote>
-```
-
----
+- **Pipeline de validação (este repo):** <https://github.com/FredRelvas/trabalho-final-visao>
+- **Setup do robô (ROS2):** <https://github.com/JoaoGChv/TB4>
+- **Checkpoints treinados:** Hugging Face — `SrRyan/depth-icl-ground-robot`
+- **Dataset de treino/fine-tuning:** <https://www.kaggle.com/datasets/fredericorelvas/datasets-depht-models>
 
 ## Referências
 
-- **Paper original:** Vizzotto, F. L. et al. *Case Study of Deep Learning Methods
-  for Depth Estimation in Indoor Ground Robotics*. Revista de Informática Teórica
-  e Aplicada, 32(1), 166–172, 2025.
+- Vizzotto, F. L. et al. *Case Study of Deep Learning Methods for Depth
+  Estimation in Indoor Ground Robotics*. RITA, 32(1), 166–172, 2025.
   [DOI: 10.22456/2175-2745.143443](https://doi.org/10.22456/2175-2745.143443)
-- **Paper do dataset:** Saeedi, S. et al. *Characterizing Visual Localization
-  and Mapping Datasets*. ICRA 2019.
-- **Dataset:** [Pering Laboratory — LMData](https://peringlab.org/lmdata/)
-- **Modelos avaliados:**
-  - [ZoeDepth](https://github.com/isl-org/ZoeDepth) (Bhat et al., 2023)
-  - [Monodepth2](https://github.com/nianticlabs/monodepth2) (Godard et al., 2019)
+- [Monodepth2](https://github.com/nianticlabs/monodepth2) (Godard et al., 2019)
+- [Depth-Anything v2](https://github.com/DepthAnything/Depth-Anything-V2) (Yang et al., 2024)
+- [ZoeDepth](https://github.com/isl-org/ZoeDepth) (Bhat et al., 2023)

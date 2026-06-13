@@ -105,7 +105,7 @@ tópicos.
 ## Disponibilidade de código e dados
 
 - **Pipeline de validação (este repo):** <https://github.com/FredRelvas/edge-depth-robotics-cv-study>
-- **Setup do robô (ROS2):** <https://github.com/JoaoGChv/TB4>
+- **Setup do robô (ROS2):** <https://github.com/JoaoGChv/ROS2-Monocular-depth-TurtleBot4>
 - **Checkpoints treinados:** Hugging Face — `SrRyan/depth-icl-ground-robot`
 - **Dataset de treino/fine-tuning:** <https://www.kaggle.com/datasets/fredericorelvas/datasets-depht-models>
 
